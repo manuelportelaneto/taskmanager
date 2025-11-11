@@ -10,6 +10,7 @@ interface TasksState {
   createTaskByMessage: (text: string) => Promise<void>;
   searchTasks: (query: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  updateTask: (id: string, data: { title?: string; description?: string }) => Promise<void>;
 }
 
 export const useTasksStore = create<TasksState>((set, get) => ({
@@ -46,10 +47,14 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   },
 
   searchTasks: async (query: string) => {
+    if (!query.trim()) {
+      await get().fetchTasks();
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
-      const tasks = await tasksApi.searchTasks(query);
-      set({ tasks, isLoading: false });
+      const searchedTasks = await tasksApi.searchTasks(query);
+      set({ tasks: searchedTasks, isLoading: false });
     } catch {
       set({ isLoading: false, error: "Failed to search tasks" });
     }
@@ -67,6 +72,16 @@ export const useTasksStore = create<TasksState>((set, get) => ({
       set({ isLoading: false, error: "Failed to delete task" });
       // Rollback if optimistic UI was used
       // set({ tasks: originalTasks });
+    }
+  },
+
+  updateTask: async (id: string, data: { title?: string; description?: string }) => {
+    set({ isLoading: true, error: null });
+    try {
+      await tasksApi.updateTask(id, data);
+      await get().fetchTasks(); // Recarrega a lista para refletir a atualização
+    } catch {
+      set({ isLoading: false, error: "Failed to update task" });
     }
   },
 }));
