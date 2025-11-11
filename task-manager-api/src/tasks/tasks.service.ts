@@ -28,7 +28,10 @@ export class TasksService {
   }
 
   findAll(user: User): Promise<Task[]> {
-    return this.tasksRepository.find({ where: { user: { id: user.id } } });
+    return this.tasksRepository.find({
+      where: { user: { id: user.id } },
+      order: { createdAt: 'DESC' }, // Boa prática: ordenar da mais nova para a mais antiga
+    });
   }
 
   async findOne(id: string, user: User): Promise<Task> {
@@ -64,35 +67,50 @@ export class TasksService {
       throw new NotFoundException(`Task with ID "${id}" not found`);
     }
   }
-
-  // MÉTODO SEARCH CORRIGIDO
+  
+  // VERSÃO FINAL: BUSCA HÍBRIDA
   async search(query: string, user: User): Promise<Task[]> {
-    const searchVector = await this.aiService.generateEmbedding(query);
-
-    if (!searchVector) {
-      return [];
+    // Se a query for vazia, retorna todas as tarefas do usuário
+    if (!query || query.trim() === '') {
+      return this.findAll(user);
     }
 
-    // A pgvector espera o vetor no formato '[1,2,3,...]'
-    const vectorString = `[${searchVector.join(',')}]`;
+    // 1. Busca Semântica (por similaridade de significado)
+    const searchVector = await this.aiService.generateEmbedding(query);
+    let semanticResults: Task[] = [];
+    if (searchVector) {
+      const vectorString = `[${searchVector.join(',')}]`;
+      // Usamos query crua para performance e compatibilidade com operadores do pgvector
+      semanticResults = await this.tasksRepository.manager.query(
+        `
+        SELECT *, "embedding" <=> $1 AS distance
+        FROM "task"
+        WHERE "userId" = $2
+        ORDER BY distance ASC
+        LIMIT 5
+        `,
+        [vectorString, user.id],
+      );
+    }
 
-    // Usamos o QueryBuilder para construir a query de forma segura
-    const tasks = await this.tasksRepository
+    // 2. Busca Textual (por palavras-chave no título ou descrição)
+    const textualResults = await this.tasksRepository
       .createQueryBuilder('task')
-      // Adicionamos um campo virtual 'distance' calculado com a distância de cosseno.
-      // O operador `<=>` é do pgvector.
-      .addSelect('task.embedding <=> :vector', 'distance')
-      // Filtramos para pegar apenas as tarefas do usuário logado
       .where('task."userId" = :userId', { userId: user.id })
-      // Passamos o vetor de busca como um parâmetro seguro para evitar SQL Injection
-      .setParameter('vector', vectorString)
-      // Ordenamos pela distância (menor distância = mais similar)
-      .orderBy('distance', 'ASC')
-      // Limitamos o número de resultados
+      .andWhere(
+        '(task.title ILIKE :query OR task.description ILIKE :query)',
+        { query: `%${query}%` },
+      )
       .limit(5)
-      // O TypeORM mapeará os resultados para a entidade Task automaticamente
       .getMany();
 
-    return tasks;
+    // 3. Combina e Remove Duplicatas
+    const combinedResults = [...semanticResults, ...textualResults];
+    const uniqueResultsMap = new Map<string, Task>();
+    combinedResults.forEach((task) => {
+      uniqueResultsMap.set(task.id, task);
+    });
+
+    return Array.from(uniqueResultsMap.values());
   }
 }

@@ -3,7 +3,9 @@ import { AiService } from '../ai.service';
 import { IncomingMessageDto } from '../dto/incoming-message.dto';
 import { TasksService } from '../../tasks/tasks.service';
 import { UsersService } from '../../users/users.service';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
+@ApiTags('Webhooks')
 @Controller('messages')
 export class MessageController {
   constructor(
@@ -13,6 +15,7 @@ export class MessageController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Cria uma tarefa a partir de uma mensagem de texto' })
   async handleIncomingMessage(@Body() incomingMessageDto: IncomingMessageDto) {
     const generatedTaskData = await this.aiService.generateTaskFromText(incomingMessageDto.text);
     if (!generatedTaskData) {
