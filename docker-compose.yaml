@@ -1,0 +1,42 @@
+services:
+  api:
+    build:
+      context: ./task-manager-api
+      dockerfile: Dockerfile
+    container_name: task-manager-api
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ./.env
+    volumes:
+      - ./task-manager-api/src:/usr/src/app/src
+    networks:
+      - tasknet
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: task-manager-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=taskdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - tasknet
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d taskdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+networks:
+  tasknet:
+    driver: bridge
+
+volumes:
+  pgdata:
