@@ -50,9 +50,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('auth-token', token);
       
       return true; // Retorna sucesso
-    } catch (error: any) {
-      // O `error` do Axios geralmente está em `error.response.data.message`
-      const errorMessage = error.response?.data?.message || 'Invalid email or password.';
+    } catch (error: unknown) {
+      let errorMessage = 'Invalid email or password.';
+      if (typeof error === 'object' && error !== null && 'response' in error) {
+        const response = (error as { response?: { data?: { message?: string } } }).response;
+        if (response?.data?.message) {
+          errorMessage = response.data.message;
+        }
+      }
       set((state) => ({ ...state, error: errorMessage, isLoading: false }));
       return false; // Retorna falha
     }

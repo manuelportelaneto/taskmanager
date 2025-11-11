@@ -32,20 +32,25 @@ const DashboardPage = () => {
     e.preventDefault();
     if (quickCreateText.trim()) {
       await createTaskByMessage(quickCreateText);
-      setQuickCreateText("");
+      setQuickCreateText(""); // Clear input after successful creation
+      fetchTasks(); // Refresh tasks
     }
   };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    await searchTasks(searchText);
+    if (searchText.trim()) {
+      await searchTasks(searchText);
+      setSearchText(""); // Clear input after successful search
+      fetchTasks(); // Refresh tasks
+    }
   };
 
   return (
     <main className="container">
       <nav>
         <ul>
-          <li><h1>Dashboard</h1></li>
+          <li><h1>Painel de Controle</h1></li>
         </ul>
         <ul>
           <li><button onClick={handleLogout} className="secondary">Logout</button></li>
@@ -54,7 +59,7 @@ const DashboardPage = () => {
       <article>
         <div className="grid">
           <form onSubmit={handleSearch}>
-            <label htmlFor="search">Search Tasks</label>
+            <label htmlFor="search">Buscar Tarefas</label>
             <input
               type="search"
               id="search"

@@ -1,20 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { UsersService } from '../users/users.service'; // Importamos o UsersService
+import { User } from '../users/entities/user.entity'; // Importamos a entidade User
 
-// Interface para definir o formato do payload do JWT
+// Definimos a interface JwtPayload localmente para evitar dependência de um arquivo externo ausente.
 export interface JwtPayload {
-  sub: string; // O ID do usuário (subject)
-  email: string;
+  sub: string | number;
+  iat?: number;
+  exp?: number;
 }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
+  constructor(
+    // CORREÇÃO: Injetamos o UsersService para podermos consultar o banco.
+    private readonly usersService: UsersService,
+    configService: ConfigService,
+  ) {
     const jwtSecret = configService.get<string>('JWT_SECRET');
 
-    // Fail-fast: A aplicação não deve iniciar sem uma chave JWT.
     if (!jwtSecret) {
       throw new Error(
         'FATAL ERROR: JWT_SECRET is not defined in environment variables.',
@@ -29,15 +35,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   /**
-   * O Passport decodifica o JWT usando a chave secreta.
-   * Este método `validate` então recebe o payload decodificado como argumento.
-   * O que este método retorna será anexado ao objeto `request` como `req.user`.
-   * @param payload O payload decodificado do token JWT.
+   * Este método agora busca o usuário completo no banco de dados.
+   * Isso garante que o usuário existe e nos dá acesso à entidade completa
+   * nos controllers, através do decorator @GetUser().
    */
-  async validate(payload: JwtPayload): Promise<JwtPayload> {
-    // Para nosso caso, o próprio payload contém as informações do usuário que precisamos.
-    // Em um sistema mais complexo, poderíamos usar o `payload.sub` (ID do usuário)
-    // para buscar a entidade `User` completa no banco de dados aqui.
-    return { sub: payload.sub, email: payload.email };
+  async validate(payload: JwtPayload): Promise<User> {
+    const { sub: userId } = payload;
+    const user = await this.usersService.findOne(String(userId)); // Buscamos o usuário pelo ID do token
+
+    if (!user) {
+      // Se o usuário não existir mais, o token é inválido.
+      throw new UnauthorizedException('User not found.');
+    }
+
+    return user; // O objeto 'user' completo será anexado a req.user
   }
 }

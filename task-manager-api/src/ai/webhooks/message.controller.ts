@@ -1,38 +1,48 @@
-import { Controller, Post, Body, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  InternalServerErrorException,
+  UseGuards, // Importamos o UseGuards
+} from '@nestjs/common';
 import { AiService } from '../ai.service';
 import { IncomingMessageDto } from '../dto/incoming-message.dto';
 import { TasksService } from '../../tasks/tasks.service';
-import { UsersService } from '../../users/users.service';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard'; // Importamos nosso Guard
+import { GetUser } from '../../auth/decorators/user.decorator'; // Importamos nosso Decorator
+import { User } from '../../users/entities/user.entity'; // Importamos a Entidade User
 
-@ApiTags('Webhooks')
 @Controller('messages')
+@UseGuards(JwtAuthGuard) // CORREÇÃO 1: Protegemos o controller inteiro com o Guard JWT
 export class MessageController {
   constructor(
     private readonly aiService: AiService,
     private readonly tasksService: TasksService,
-    private readonly usersService: UsersService,
   ) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cria uma tarefa a partir de uma mensagem de texto' })
-  async handleIncomingMessage(@Body() incomingMessageDto: IncomingMessageDto) {
-    const generatedTaskData = await this.aiService.generateTaskFromText(incomingMessageDto.text);
-    if (!generatedTaskData) {
-      throw new InternalServerErrorException('IA não conseguiu gerar os dados da tarefa.');
-    }
+  async handleIncomingMessage(
+    @Body() incomingMessageDto: IncomingMessageDto,
+    @GetUser() user: User, // CORREÇÃO 2: Injetamos o usuário logado, extraído do token pelo Guard
+  ) {
+    const generatedTaskData = await this.aiService.generateTaskFromText(
+      incomingMessageDto.text,
+    );
 
-    const fakeUser = await this.usersService.findFirst();
-    if (!fakeUser) {
-      throw new UnauthorizedException('Nenhum usuário de exemplo disponível para associar a tarefa.');
+    if (!generatedTaskData) {
+      throw new InternalServerErrorException('AI failed to generate task data.');
     }
     
-    return this.tasksService.create({
-      title: generatedTaskData.title,
-      description: generatedTaskData.description,
-      rawText: incomingMessageDto.text,
-      aiPriority: generatedTaskData.aiPriority,
-      aiJustification: generatedTaskData.aiJustification,
-    }, fakeUser);
+    // CORREÇÃO 3: Usamos o usuário REAL da sessão, não mais um 'fakeUser'
+    return this.tasksService.create(
+      {
+        title: generatedTaskData.title,
+        description: generatedTaskData.description,
+        rawText: incomingMessageDto.text,
+        aiPriority: generatedTaskData.aiPriority,
+        aiJustification: generatedTaskData.aiJustification,
+      },
+      user, // Passamos o usuário autenticado para o serviço de criação
+    );
   }
 }

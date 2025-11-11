@@ -14,3 +14,8 @@ export const searchTasks = async (query: string) => {
   const response = await api.get(`/tasks/search?query=${query}`);
   return response.data;
 };
+
+export const deleteTask = async (id: string) => {
+  const response = await api.delete(`/tasks/${id}`);
+  return response.data;
+};
