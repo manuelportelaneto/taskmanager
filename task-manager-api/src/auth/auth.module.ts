@@ -15,7 +15,7 @@ import { JwtAuthGuard } from './jwt-auth.guard'; // <<< Garanta que este import 
     JwtModule.registerAsync({
       imports: [ConfigModule],
       // CORREÇÃO: Preenchemos a lógica da 'useFactory'
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
         if (!secret) {
           throw new Error('JWT_SECRET not set in environment variables');

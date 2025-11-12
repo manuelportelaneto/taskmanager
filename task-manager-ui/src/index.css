@@ -71,3 +71,33 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Fundo Moderno */
+body {
+    background: #0d1117; /* Um azul quase preto, cor do GitHub Dark Mode */
+}
+
+/* Ajustes no Card da Tarefa */
+.task-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.task-card footer {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: flex-end; /* Alinha botões à direita */
+    gap: 0.5rem; /* Espaçamento entre os botões */
+}
+
+/* Cores dos Botões */
+.task-card .btn-edit {
+    background-color: var(--pico-primary); /* Azul padrão do Pico */
+    border-color: var(--pico-primary);
+}
+.task-card .btn-delete {
+    background-color: var(--pico-color-red-600);
+    border-color: var(--pico-color-red-600);
+}

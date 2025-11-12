@@ -47,15 +47,18 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   },
 
   searchTasks: async (query: string) => {
-    if (!query.trim()) {
-      await get().fetchTasks();
+    // Se a busca for vazia, restaura a lista completa.
+    if (!query || !query.trim()) {
+      get().fetchTasks();
       return;
     }
+
     set({ isLoading: true, error: null });
     try {
-      const searchedTasks = await tasksApi.searchTasks(query);
-      set({ tasks: searchedTasks, isLoading: false });
-    } catch {
+      // CORREÇÃO: Pegamos o resultado da API e o colocamos no estado.
+      const searchResults = await tasksApi.searchTasks(query);
+      set({ tasks: searchResults, isLoading: false });
+    } catch (err) {
       set({ isLoading: false, error: "Failed to search tasks" });
     }
   },

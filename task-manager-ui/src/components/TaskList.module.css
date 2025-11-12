@@ -1,0 +1,21 @@
+.task-card footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.buttonGroup {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.editButton {
+    background-color: var(--pico-primary);
+    color: white;
+}
+
+.deleteButton {
+    background-color: var(--pico-color-red-600);
+    color: white;
+}

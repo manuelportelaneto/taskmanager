@@ -11,6 +11,14 @@ interface GeneratedTaskData {
   aiJustification: string;
 }
 
+// Interface para os argumentos da função da ferramenta
+interface CreateTaskToolArguments {
+  title: string;
+  description: string;
+  priority: 'Alta' | 'Média' | 'Baixa';
+  justification: string;
+}
+
 @Injectable()
 export class AiService {
   private openai: OpenAI;
@@ -52,7 +60,10 @@ SEMPRE chame a ferramenta 'create_task'. Garanta que os argumentos NUNCA estejam
                 properties: {
                   title: { type: 'string' },
                   description: { type: 'string' },
-                  priority: { type: 'string', enum: ['Alta', 'Média', 'Baixa'] },
+                  priority: {
+                    type: 'string',
+                    enum: ['Alta', 'Média', 'Baixa'],
+                  },
                   justification: { type: 'string' },
                 },
                 required: ['title', 'description', 'priority', 'justification'],
@@ -63,29 +74,27 @@ SEMPRE chame a ferramenta 'create_task'. Garanta que os argumentos NUNCA estejam
         tool_choice: { type: 'function', function: { name: 'create_task' } },
       });
 
-      const toolCall: ChatCompletionMessageToolCall | undefined = response.choices[0]?.message?.tool_calls?.[0];
+      const toolCall = response.choices[0]?.message?.tool_calls?.[0];
 
-      // Simplificado: compatibilidade com diferentes formatos de tool call do SDK.
-      if (toolCall) {
-        // Compatibiliza diferentes formatos: .function, .tool, ou diretamente .name / .arguments
-        const functionName = (toolCall as any).function?.name ?? (toolCall as any).tool?.name ?? (toolCall as any).name;
-        const rawArgs = (toolCall as any).function?.arguments ?? (toolCall as any).tool?.arguments ?? (toolCall as any).arguments;
-
-        if (functionName === 'create_task' && rawArgs) {
-          const args = JSON.parse(rawArgs);
+      if (toolCall?.type === 'function' && toolCall.function.name === 'create_task') {
+        try {
+          const args: CreateTaskToolArguments = JSON.parse(
+            toolCall.function.arguments,
+          );
 
           if (args && args.title && args.description) {
             return {
               title: args.title,
               description: args.description,
-              aiPriority: args.priority || 'Média', // Valor padrão em caso de falha da IA
-              aiJustification: args.justification || 'Análise da IA inconclusiva.',
+              aiPriority: args.priority || 'Média',
+              aiJustification:
+                args.justification || 'Análise da IA inconclusiva.',
             };
           }
+        } catch (e) {
+          console.error('Failed to parse tool call arguments:', e);
         }
       }
-
-      console.error('AI response did not contain the expected function call or required fields. Response:', JSON.stringify(response));
       return null;
     } catch (error) {
       console.error('Error in generateTaskFromText:', error);

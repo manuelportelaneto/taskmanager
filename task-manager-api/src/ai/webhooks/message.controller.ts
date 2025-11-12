@@ -11,7 +11,10 @@ import { TasksService } from '../../tasks/tasks.service';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard'; // Importamos nosso Guard
 import { GetUser } from '../../auth/decorators/user.decorator'; // Importamos nosso Decorator
 import { User } from '../../users/entities/user.entity'; // Importamos a Entidade User
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('AI')
+@ApiBearerAuth()
 @Controller('messages')
 @UseGuards(JwtAuthGuard) // CORREÇÃO 1: Protegemos o controller inteiro com o Guard JWT
 export class MessageController {
@@ -21,6 +24,9 @@ export class MessageController {
   ) {}
 
   @Post()
+  @ApiOperation({
+    summary: 'Cria uma tarefa a partir de uma mensagem de texto usando IA',
+  })
   async handleIncomingMessage(
     @Body() incomingMessageDto: IncomingMessageDto,
     @GetUser() user: User, // CORREÇÃO 2: Injetamos o usuário logado, extraído do token pelo Guard
@@ -30,9 +36,11 @@ export class MessageController {
     );
 
     if (!generatedTaskData) {
-      throw new InternalServerErrorException('AI failed to generate task data.');
+      throw new InternalServerErrorException(
+        'AI failed to generate task data.',
+      );
     }
-    
+
     // CORREÇÃO 3: Usamos o usuário REAL da sessão, não mais um 'fakeUser'
     return this.tasksService.create(
       {

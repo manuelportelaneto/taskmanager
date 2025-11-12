@@ -2,6 +2,17 @@
 
 Este projeto é um gerenciador de tarefas fullstack que incorpora funcionalidades de Inteligência Artificial para otimizar a gestão de tarefas. Ele permite aos usuários criar, organizar e gerenciar suas tarefas de forma eficiente, com o auxílio de IA para sumarização, priorização e busca semântica.
 
+## Screenshots
+
+![Tela de Login](docs/login.png)
+_Tela de Login_
+
+![Tela de Registro](docs/register.png)
+_Tela de Registro_
+
+![Dashboard Principal](docs/dashboard.png)
+_Dashboard Principal_
+
 ## Tecnologias Utilizadas
 
 ### Backend (task-manager-api)
@@ -24,12 +35,16 @@ Siga os passos abaixo para configurar e rodar o projeto em sua máquina local:
     cd task-manager
     ```
 
-2.  **Criar o arquivo de variáveis de ambiente:**
-    Crie um arquivo `.env` na raiz do projeto, copiando o conteúdo de `.env.example`.
+2.  **Configurar Variáveis de Ambiente:**
+    Crie um arquivo `.env` na raiz do projeto, copiando o arquivo de exemplo `.env.example`.
     ```bash
     cp .env.example .env
     ```
-    Edite o arquivo `.env` com suas configurações locais, se necessário.
+    Após copiar, **edite o arquivo `.env`** e preencha as variáveis com suas credenciais e chaves de API.
+    
+    - `POSTGRES_*`: Credenciais para o banco de dados PostgreSQL.
+    - `JWT_SECRET`: Uma chave secreta para gerar tokens de autenticação.
+    - `OPENAI_API_KEY`: Sua chave de API da OpenAI.
 
 3.  **Iniciar os serviços com Docker Compose:**
     Certifique-se de ter o Docker e o Docker Compose instalados.

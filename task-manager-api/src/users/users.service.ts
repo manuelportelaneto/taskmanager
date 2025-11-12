@@ -33,15 +33,15 @@ export class UsersService {
     });
 
     try {
-      await this.usersRepository.save(user);
-
-      const { password, ...result } = user;
+      const savedUser = await this.usersRepository.save(user);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...result } = savedUser;
       return result;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Error saving user to database.');
     }
   }
-  
+
   async findFirst(): Promise<User | null> {
     const users = await this.usersRepository.find({ take: 1 });
     return users.length > 0 ? users[0] : null;
@@ -50,7 +50,7 @@ export class UsersService {
   findOne(id: string): Promise<User | null> {
     return this.usersRepository.findOneBy({ id });
   }
-  
+
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository
       .createQueryBuilder('user')
@@ -58,6 +58,4 @@ export class UsersService {
       .where('user.email = :email', { email })
       .getOne();
   }
-  
-  
 }

@@ -7,6 +7,11 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { User } from '../users/entities/user.entity';
 import { AiService } from '../ai/ai.service';
 
+// Interface para o resultado da busca semântica, que inclui a distância
+interface SemanticSearchResult extends Task {
+  distance: number;
+}
+
 @Injectable()
 export class TasksService {
   constructor(
@@ -67,18 +72,14 @@ export class TasksService {
       throw new NotFoundException(`Task with ID "${id}" not found`);
     }
   }
-  
-  // VERSÃO FINAL: BUSCA HÍBRIDA
+
   async search(query: string, user: User): Promise<Task[]> {
-    // Se a query for vazia, retorna todas as tarefas do usuário
-    if (!query || query.trim() === '') {
-      return this.findAll(user);
-    }
+    if (!query?.trim()) return this.findAll(user);
 
     // 1. Busca Semântica (por similaridade de significado)
     const searchVector = await this.aiService.generateEmbedding(query);
-    let semanticResults: Task[] = [];
-    if (searchVector) {
+    let semanticResults: SemanticSearchResult[] = [];
+    if (searchVector && Array.isArray(searchVector) && searchVector.length) {
       const vectorString = `[${searchVector.join(',')}]`;
       // Usamos query crua para performance e compatibilidade com operadores do pgvector
       semanticResults = await this.tasksRepository.manager.query(
@@ -97,18 +98,22 @@ export class TasksService {
     const textualResults = await this.tasksRepository
       .createQueryBuilder('task')
       .where('task."userId" = :userId', { userId: user.id })
-      .andWhere(
-        '(task.title ILIKE :query OR task.description ILIKE :query)',
-        { query: `%${query}%` },
-      )
+      .andWhere('(task.title ILIKE :query OR task.description ILIKE :query)', {
+        query: `%${query}%`,
+      })
       .limit(5)
       .getMany();
 
     // 3. Combina e Remove Duplicatas
-    const combinedResults = [...semanticResults, ...textualResults];
+    const combinedResults: (Task | SemanticSearchResult)[] = [
+      ...semanticResults,
+      ...textualResults,
+    ];
     const uniqueResultsMap = new Map<string, Task>();
     combinedResults.forEach((task) => {
-      uniqueResultsMap.set(task.id, task);
+      if (task) {
+        uniqueResultsMap.set(task.id, task as Task);
+      }
     });
 
     return Array.from(uniqueResultsMap.values());
